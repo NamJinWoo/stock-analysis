@@ -2,22 +2,41 @@
 {% from "_market_page.html" import change_badge %}
 {% block title %}미국시장 분석 - StockRadar{% endblock %}
 
+{% block scripts %}
+<script>
+  window.REFRESH_API_URL = "{{ url_for('us.api_data') }}";
+  window.MARKET_TYPE = "us";
+</script>
+{% endblock %}
+
 {% block content %}
-<div class="d-flex align-items-center mb-4">
-  <h2 class="fw-bold mb-0 me-3">🇺🇸 미국시장 분석</h2>
+<!-- Page header -->
+<div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-2">
+  <h2 class="fw-bold mb-0">🇺🇸 미국시장 분석</h2>
+  <div class="d-flex align-items-center gap-3 text-muted small">
+    <span><i class="fa-solid fa-clock me-1"></i>최근 업데이트: <span id="last-updated">{{ now }}</span></span>
+  </div>
 </div>
 
-<!-- 지수 카드 -->
-<section class="mb-5">
+<!-- ============================================================
+     지수 카드 (스파크라인 포함)
+     ============================================================ -->
+<section class="mb-4">
   <h5 class="fw-semibold mb-3 text-secondary">시장 지수</h5>
   <div class="row g-3">
     {% for idx in indices %}
+    {% set spark_key = idx.name %}
+    {% set spark = sparklines.get(spark_key, []) %}
+    {% set safe_name = idx.name | replace(' ', '_') | replace('&', '_') | replace('/', '_') %}
     <div class="col-6 col-md-4 col-lg-3">
-      <div class="card border-0 shadow-sm h-100">
+      <div class="card border-0 index-card h-100">
         <div class="card-body">
-          <div class="text-muted small">{{ idx.name }}</div>
-          <div class="fs-4 fw-bold">{{ "{:,.2f}".format(idx.close) }}</div>
-          <div>{{ change_badge(idx.change_pct) }}</div>
+          <div class="index-name">{{ idx.name }}</div>
+          <div class="index-value" id="idx-close-{{ safe_name }}">{{ "{:,.2f}".format(idx.close) }}</div>
+          <div id="idx-pct-{{ safe_name }}">{{ change_badge(idx.change_pct) }}</div>
+          {% if spark %}
+          <canvas class="sparkline-canvas" data-sparkline='{{ spark | tojson }}' height="40"></canvas>
+          {% endif %}
         </div>
       </div>
     </div>
@@ -27,8 +46,115 @@
   </div>
 </section>
 
-<!-- 상승/하락 -->
-<div class="row g-4 mb-5">
+<!-- ============================================================
+     Fear & Greed + Market Breadth row
+     ============================================================ -->
+<div class="row g-3 mb-4">
+  <!-- Fear & Greed -->
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header fw-semibold">
+        <i class="fa-solid fa-gauge-high me-2"></i>Fear &amp; Greed Index
+      </div>
+      <div class="fear-greed-box">
+        {% if fear_greed %}
+        <div class="fear-greed-label text-{{ fear_greed.color }}" id="fg-label">{{ fear_greed.label }}</div>
+        <div class="fear-greed-vix mt-1" id="fg-vix">
+          {% if fear_greed.value %}VIX: {{ fear_greed.value }}{% endif %}
+        </div>
+        {% if fear_greed.label == 'Extreme Greed' %}
+          <div class="mt-2 small text-success">시장이 매우 낙관적입니다</div>
+        {% elif fear_greed.label == 'Greed' %}
+          <div class="mt-2 small text-success">시장이 낙관적입니다</div>
+        {% elif fear_greed.label == 'Neutral' %}
+          <div class="mt-2 small text-warning">시장이 중립적입니다</div>
+        {% elif fear_greed.label == 'Fear' %}
+          <div class="mt-2 small text-danger">시장이 비관적입니다</div>
+        {% else %}
+          <div class="mt-2 small text-danger">시장이 매우 비관적입니다</div>
+        {% endif %}
+        {% else %}
+        <div class="text-muted">데이터 없음</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Market Breadth donut -->
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header fw-semibold">
+        <i class="fa-solid fa-chart-pie me-2"></i>시장 폭 (S&amp;P 500 구성종목)
+      </div>
+      <div class="card-body text-center">
+        <canvas id="breadthChart" height="130"
+                data-adv="{{ breadth.advancers if breadth else 0 }}"
+                data-dec="{{ breadth.decliners if breadth else 0 }}"
+                data-unc="{{ breadth.unchanged if breadth else 0 }}"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Breadth counts -->
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header fw-semibold">
+        <i class="fa-solid fa-bars-staggered me-2"></i>상승 / 하락 현황
+      </div>
+      <div class="card-body d-flex flex-column justify-content-center gap-2">
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="text-danger fw-semibold"><i class="fa-solid fa-arrow-up me-1"></i>상승</span>
+          <span class="fs-4 fw-bold text-danger" id="breadth-adv">—</span>
+        </div>
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="text-primary fw-semibold"><i class="fa-solid fa-arrow-down me-1"></i>하락</span>
+          <span class="fs-4 fw-bold text-primary" id="breadth-dec">—</span>
+        </div>
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="text-secondary fw-semibold"><i class="fa-solid fa-minus me-1"></i>보합</span>
+          <span class="fs-4 fw-bold text-secondary" id="breadth-unc">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     섹터 ETF 히트맵
+     ============================================================ -->
+{% if sectors %}
+<section class="mb-4">
+  <h5 class="fw-semibold mb-3 text-secondary">섹터 ETF 히트맵 (11 Sectors)</h5>
+  <div class="sector-heatmap">
+    {% for sec in sectors %}
+    {% set pct = sec.change_pct %}
+    {% if pct >= 2 %}
+      {% set bg = "#c0392b" %}
+    {% elif pct >= 1 %}
+      {% set bg = "#e74c3c" %}
+    {% elif pct >= 0 %}
+      {% set bg = "#e67e22" %}
+    {% elif pct >= -1 %}
+      {% set bg = "#2980b9" %}
+    {% elif pct >= -2 %}
+      {% set bg = "#1a6ea0" %}
+    {% else %}
+      {% set bg = "#155a8a" %}
+    {% endif %}
+    <div class="sector-cell" style="background-color:{{ bg }}">
+      <div class="sector-name">{{ sec.name }}</div>
+      <div class="small text-white-50">{{ sec.ticker }}</div>
+      <div>{{ "{:+.2f}".format(pct) }}%</div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<!-- ============================================================
+     상승 / 하락 종목
+     ============================================================ -->
+<div class="row g-4 mb-4">
   <div class="col-lg-6">
     <div class="card border-0 shadow-sm">
       <div class="card-header bg-success text-white fw-semibold">
@@ -36,10 +162,12 @@
       </div>
       <div class="card-body p-0">
         <table class="table table-hover mb-0">
-          <thead class="table-light"><tr><th>Ticker</th><th>Price</th><th>Change</th><th>Volume</th></tr></thead>
-          <tbody>
+          <thead class="table-light">
+            <tr><th>Ticker</th><th>Price</th><th>Change</th><th>Volume</th></tr>
+          </thead>
+          <tbody id="gainers-tbody">
             {% for s in gainers %}
-            <tr>
+            <tr class="clickable-row" onclick="location.href='{{ url_for('stock.us_detail', ticker=s.ticker) }}'">
               <td><span class="fw-semibold">{{ s.ticker }}</span></td>
               <td>${{ "{:,.2f}".format(s.close) }}</td>
               <td>{{ change_badge(s.change_pct) }}</td>
@@ -60,10 +188,12 @@
       </div>
       <div class="card-body p-0">
         <table class="table table-hover mb-0">
-          <thead class="table-light"><tr><th>Ticker</th><th>Price</th><th>Change</th><th>Volume</th></tr></thead>
-          <tbody>
+          <thead class="table-light">
+            <tr><th>Ticker</th><th>Price</th><th>Change</th><th>Volume</th></tr>
+          </thead>
+          <tbody id="losers-tbody">
             {% for s in losers %}
-            <tr>
+            <tr class="clickable-row" onclick="location.href='{{ url_for('stock.us_detail', ticker=s.ticker) }}'">
               <td><span class="fw-semibold">{{ s.ticker }}</span></td>
               <td>${{ "{:,.2f}".format(s.close) }}</td>
               <td>{{ change_badge(s.change_pct) }}</td>
@@ -79,27 +209,61 @@
   </div>
 </div>
 
-<!-- 추천 종목 -->
+<!-- ============================================================
+     거래량 상위 종목
+     ============================================================ -->
+<section class="mb-4">
+  <h5 class="fw-semibold mb-3 text-secondary"><i class="fa-solid fa-fire me-2 text-danger"></i>Volume Leaders</h5>
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr><th>Ticker</th><th>Price</th><th>Change</th><th>Volume</th></tr>
+        </thead>
+        <tbody id="vol-tbody">
+          {% for s in vol_leaders %}
+          <tr class="clickable-row" onclick="location.href='{{ url_for('stock.us_detail', ticker=s.ticker) }}'">
+            <td><span class="fw-semibold">{{ s.ticker }}</span></td>
+            <td>${{ "{:,.2f}".format(s.close) }}</td>
+            <td>{{ change_badge(s.change_pct) }}</td>
+            <td class="fw-semibold">{{ "{:,}".format(s.volume) }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" class="text-center text-muted py-3">No data</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     추천 종목
+     ============================================================ -->
 <section class="mb-5">
-  <h5 class="fw-semibold mb-3 text-secondary"><i class="fa-solid fa-star me-2 text-warning"></i>Recommended Stocks</h5>
+  <h5 class="fw-semibold mb-3 text-secondary">
+    <i class="fa-solid fa-star me-2 text-warning"></i>Recommended Stocks
+  </h5>
   <div class="row g-3">
     {% for s in recommendations %}
     <div class="col-sm-6 col-lg-4">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-start">
-            <div>
-              <div class="fw-bold">{{ s.ticker }}</div>
+      <a href="{{ url_for('stock.us_detail', ticker=s.ticker) }}" class="text-decoration-none">
+        <div class="card border-0 shadow-sm h-100 hoverable">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <div class="fw-bold">{{ s.ticker }}</div>
+              </div>
+              <span class="badge bg-warning text-dark">{{ s.signal }}</span>
             </div>
-            <span class="badge bg-warning text-dark">{{ s.signal }}</span>
-          </div>
-          <hr class="my-2" />
-          <div class="d-flex justify-content-between">
-            <span class="fs-5 fw-bold">${{ "{:,.2f}".format(s.close) }}</span>
-            {{ change_badge(s.change_pct) }}
+            <hr class="my-2" />
+            <div class="d-flex justify-content-between">
+              <span class="fs-5 fw-bold">${{ "{:,.2f}".format(s.close) }}</span>
+              {{ change_badge(s.change_pct) }}
+            </div>
           </div>
         </div>
-      </div>
+      </a>
     </div>
     {% else %}
     <div class="col-12"><p class="text-muted">Calculating recommendations…</p></div>

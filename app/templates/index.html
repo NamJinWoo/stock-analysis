@@ -2,9 +2,33 @@
 {% block title %}StockRadar - 홈{% endblock %}
 
 {% block content %}
-<div class="text-center py-5">
-  <h1 class="display-4 fw-bold mb-3">StockRadar</h1>
+<div class="text-center py-4">
+  <h1 class="display-5 fw-bold mb-2">StockRadar</h1>
   <p class="lead text-muted mb-5">국내외 시장의 오늘 흐름, 상승/하락 종목, 추천 종목을 한눈에 확인하세요.</p>
+
+  <!-- Market Status Clocks -->
+  <div class="row g-3 justify-content-center mb-5">
+    <div class="col-sm-5 col-md-4 col-lg-3">
+      <div class="card border-0 shadow-sm text-center py-3">
+        <div class="market-clock-label mb-1">🇰🇷 서울 (KST)</div>
+        <div class="market-clock" id="clock-kst">--:--:--</div>
+        <div class="mt-1 small">
+          한국 시장: <span id="kr-status" class="market-status-closed">휴장</span>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-5 col-md-4 col-lg-3">
+      <div class="card border-0 shadow-sm text-center py-3">
+        <div class="market-clock-label mb-1">🇺🇸 뉴욕 (ET)</div>
+        <div class="market-clock" id="clock-est">--:--:--</div>
+        <div class="mt-1 small">
+          미국 시장: <span id="us-status" class="market-status-closed">Closed</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Market entry cards -->
   <div class="row g-4 justify-content-center">
     <div class="col-md-5">
       <a href="{{ url_for('korean.index') }}" class="text-decoration-none">
@@ -13,6 +37,12 @@
             <div class="display-1 mb-3">🇰🇷</div>
             <h3 class="fw-bold">국내 시장</h3>
             <p class="text-muted">KOSPI · KOSDAQ<br>국내 주식 분석 및 추천 종목</p>
+            <ul class="list-unstyled text-muted small mb-3">
+              <li><i class="fa-solid fa-check text-success me-1"></i>지수 스파크라인 차트</li>
+              <li><i class="fa-solid fa-check text-success me-1"></i>시장 폭 (상승/하락/보합)</li>
+              <li><i class="fa-solid fa-check text-success me-1"></i>섹터 히트맵</li>
+              <li><i class="fa-solid fa-check text-success me-1"></i>거래량 상위 / 추천 종목</li>
+            </ul>
             <span class="btn btn-outline-primary mt-2">분석 보기</span>
           </div>
         </div>
@@ -25,11 +55,22 @@
             <div class="display-1 mb-3">🇺🇸</div>
             <h3 class="fw-bold">미국 시장</h3>
             <p class="text-muted">S&amp;P 500 · NASDAQ · DOW<br>미국 주식 분석 및 추천 종목</p>
+            <ul class="list-unstyled text-muted small mb-3">
+              <li><i class="fa-solid fa-check text-success me-1"></i>VIX 공포탐욕 지수</li>
+              <li><i class="fa-solid fa-check text-success me-1"></i>11개 섹터 ETF 히트맵</li>
+              <li><i class="fa-solid fa-check text-success me-1"></i>지수 스파크라인 차트</li>
+              <li><i class="fa-solid fa-check text-success me-1"></i>거래량 상위 / 추천 종목</li>
+            </ul>
             <span class="btn btn-outline-success mt-2">분석 보기</span>
           </div>
         </div>
       </a>
     </div>
   </div>
+
+  <p class="text-muted small mt-5">
+    <i class="fa-solid fa-circle-info me-1"></i>
+    모든 시장 데이터는 60초마다 자동으로 업데이트됩니다. 종목 검색으로 개별 차트와 기술적 분석을 확인하세요.
+  </p>
 </div>
 {% endblock %}

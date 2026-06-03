@@ -1,0 +1,298 @@
+{% extends "base.html" %}
+{% from "_market_page.html" import change_badge %}
+{% block title %}{{ info.ticker }} - {{ info.name }} - StockRadar{% endblock %}
+
+{% block scripts %}
+<script>
+  window.CHART_API_URL = "{{ url_for('stock.chart_api', market=market, ticker=ticker) }}";
+  window.DEFAULT_PERIOD = "{{ default_period }}";
+  window.MARKET_TYPE = "{{ market }}";
+</script>
+{% endblock %}
+
+{% block content %}
+
+<!-- ============================================================
+     Stock Header
+     ============================================================ -->
+<div class="mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">홈</a></li>
+      {% if market == 'korean' %}
+      <li class="breadcrumb-item"><a href="{{ url_for('korean.index') }}">국내시장</a></li>
+      {% else %}
+      <li class="breadcrumb-item"><a href="{{ url_for('us.index') }}">미국시장</a></li>
+      {% endif %}
+      <li class="breadcrumb-item active">{{ info.ticker }}</li>
+    </ol>
+  </nav>
+
+  <div class="d-flex flex-wrap align-items-start gap-3">
+    <div>
+      <h2 class="fw-bold mb-0">{{ info.ticker }}</h2>
+      <div class="text-muted">{{ info.name }}</div>
+    </div>
+    <div class="ms-md-auto text-end">
+      {% if info.curr_close %}
+      <div class="fs-2 fw-bold">
+        {% if market == 'korean' %}
+          {{ "{:,.0f}".format(info.curr_close) }}원
+        {% else %}
+          ${{ "{:,.2f}".format(info.curr_close) }}
+        {% endif %}
+      </div>
+      {% if info.change_pct is not none %}
+      <div>
+        {% if info.change_pct > 0 %}
+          <span class="badge bg-danger fs-6">
+            ▲ {% if market == 'korean' %}{{ "{:,.0f}".format(info.change) }}원{% else %}{{ "{:+.2f}".format(info.change) }}{% endif %}
+            ({{ "{:+.2f}".format(info.change_pct) }}%)
+          </span>
+        {% elif info.change_pct < 0 %}
+          <span class="badge bg-primary fs-6">
+            ▼ {% if market == 'korean' %}{{ "{:,.0f}".format(info.change | abs) }}원{% else %}{{ "{:.2f}".format(info.change | abs) }}{% endif %}
+            ({{ "{:.2f}".format(info.change_pct | abs) }}%)
+          </span>
+        {% else %}
+          <span class="badge bg-secondary fs-6">0.00%</span>
+        {% endif %}
+      </div>
+      {% endif %}
+      {% else %}
+      <div class="text-muted">가격 정보 없음</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- ============================================================
+       LEFT: Charts (8 columns)
+       ============================================================ -->
+  <div class="col-lg-8">
+
+    <!-- Period selector -->
+    <div class="d-flex gap-2 mb-3 align-items-center flex-wrap">
+      <span class="text-muted small">기간:</span>
+      {% for period_code, period_label in [('1wk','1W'),('1mo','1M'),('3mo','3M'),('6mo','6M'),('1y','1Y')] %}
+      <button class="btn btn-sm period-btn {% if default_period == period_code %}btn-primary active{% else %}btn-outline-secondary{% endif %}"
+              data-period="{{ period_code }}">{{ period_label }}</button>
+      {% endfor %}
+      <div id="chart-loading" class="spinner-border spinner-border-sm text-secondary d-none ms-2" role="status"></div>
+    </div>
+
+    <!-- Price + MA + Bollinger chart -->
+    <div class="chart-wrapper mb-3">
+      <div class="chart-label">Price Chart — Close / MA5 / MA20 / MA60 / Bollinger Bands</div>
+      <div style="position:relative;height:280px;">
+        <canvas id="priceChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Volume chart -->
+    <div class="chart-wrapper mb-3">
+      <div class="chart-label">Volume</div>
+      <div style="position:relative;height:120px;">
+        <canvas id="volumeChart"></canvas>
+      </div>
+    </div>
+
+    <!-- RSI chart -->
+    <div class="chart-wrapper mb-3">
+      <div class="chart-label">RSI (14)</div>
+      <div style="position:relative;height:130px;">
+        <canvas id="rsiChart"></canvas>
+      </div>
+    </div>
+
+    <!-- MACD chart -->
+    <div class="chart-wrapper">
+      <div class="chart-label">MACD (12, 26, 9)</div>
+      <div style="position:relative;height:130px;">
+        <canvas id="macdChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       RIGHT: Sidebar (4 columns)
+       ============================================================ -->
+  <div class="col-lg-4">
+
+    <!-- Technical Signal Summary -->
+    {% if info.signals %}
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header fw-semibold">
+        <i class="fa-solid fa-signal me-2"></i>기술적 신호 요약
+      </div>
+      <div class="card-body">
+        <div class="signal-row">
+          {% set signals = info.signals %}
+
+          <!-- MA Cross -->
+          <div class="signal-item">
+            <div class="signal-dot"
+                 style="background-color:{% if signals.ma_cross == 'Bullish' %}#198754{% elif signals.ma_cross == 'Bearish' %}#dc3545{% else %}#6c757d{% endif %}">
+            </div>
+            <span>MA 크로스:
+              <strong class="{% if signals.ma_cross == 'Bullish' %}text-success{% elif signals.ma_cross == 'Bearish' %}text-danger{% else %}text-secondary{% endif %}">
+                {{ signals.ma_cross or 'N/A' }}
+              </strong>
+            </span>
+          </div>
+
+          <!-- RSI -->
+          <div class="signal-item">
+            <div class="signal-dot"
+                 style="background-color:{% if signals.rsi == 'Bullish' %}#198754{% elif signals.rsi == 'Bearish' %}#dc3545{% else %}#6c757d{% endif %}">
+            </div>
+            <span>RSI:
+              <strong class="{% if signals.rsi == 'Bullish' %}text-success{% elif signals.rsi == 'Bearish' %}text-danger{% else %}text-secondary{% endif %}">
+                {{ signals.rsi or 'N/A' }}
+              </strong>
+              {% if signals.rsi_value %}<small class="text-muted">({{ signals.rsi_value }})</small>{% endif %}
+            </span>
+          </div>
+
+          <!-- MACD -->
+          <div class="signal-item">
+            <div class="signal-dot"
+                 style="background-color:{% if signals.macd == 'Bullish' %}#198754{% elif signals.macd == 'Bearish' %}#dc3545{% else %}#6c757d{% endif %}">
+            </div>
+            <span>MACD:
+              <strong class="{% if signals.macd == 'Bullish' %}text-success{% elif signals.macd == 'Bearish' %}text-danger{% else %}text-secondary{% endif %}">
+                {{ signals.macd or 'N/A' }}
+              </strong>
+            </span>
+          </div>
+
+          <!-- Bollinger -->
+          <div class="signal-item">
+            <div class="signal-dot"
+                 style="background-color:{% if signals.bb == 'Bullish' %}#198754{% elif signals.bb == 'Bearish' %}#dc3545{% else %}#6c757d{% endif %}">
+            </div>
+            <span>볼린저 밴드:
+              <strong class="{% if signals.bb == 'Bullish' %}text-success{% elif signals.bb == 'Bearish' %}text-danger{% else %}text-secondary{% endif %}">
+                {{ signals.bb or 'N/A' }}
+              </strong>
+            </span>
+          </div>
+        </div>
+
+        <!-- Signal legend -->
+        <div class="mt-3 d-flex gap-3 small text-muted">
+          <span><span class="signal-dot d-inline-block" style="background:#198754;width:8px;height:8px;border-radius:50%"></span> Bullish</span>
+          <span><span class="signal-dot d-inline-block" style="background:#dc3545;width:8px;height:8px;border-radius:50%"></span> Bearish</span>
+          <span><span class="signal-dot d-inline-block" style="background:#6c757d;width:8px;height:8px;border-radius:50%"></span> Neutral</span>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Key Stats -->
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header fw-semibold">
+        <i class="fa-solid fa-table-list me-2"></i>주요 지표
+      </div>
+      <div class="card-body p-2">
+        <table class="table table-sm stat-table mb-0">
+          <tbody>
+            {% if info.high_52w %}
+            <tr>
+              <td>52주 고가</td>
+              <td class="text-end fw-semibold">
+                {% if market == 'korean' %}{{ "{:,.0f}".format(info.high_52w) }}원
+                {% else %}${{ "{:,.2f}".format(info.high_52w) }}{% endif %}
+              </td>
+            </tr>
+            {% endif %}
+            {% if info.low_52w %}
+            <tr>
+              <td>52주 저가</td>
+              <td class="text-end fw-semibold">
+                {% if market == 'korean' %}{{ "{:,.0f}".format(info.low_52w) }}원
+                {% else %}${{ "{:,.2f}".format(info.low_52w) }}{% endif %}
+              </td>
+            </tr>
+            {% endif %}
+            {% if info.market_cap %}
+            <tr>
+              <td>시가총액</td>
+              <td class="text-end fw-semibold">
+                {% set mc = info.market_cap %}
+                {% if market == 'korean' %}
+                  {% if mc >= 1000000000000 %}{{ "%.1f조"|format(mc / 1000000000000) }}
+                  {% elif mc >= 100000000 %}{{ "%.0f억"|format(mc / 100000000) }}
+                  {% else %}{{ "{:,}".format(mc) }}{% endif %}
+                {% else %}
+                  {% if mc >= 1000000000000 %}${{ "%.2fT"|format(mc / 1000000000000) }}
+                  {% elif mc >= 1000000000 %}${{ "%.2fB"|format(mc / 1000000000) }}
+                  {% elif mc >= 1000000 %}${{ "%.2fM"|format(mc / 1000000) }}
+                  {% else %}${{ "{:,}".format(mc) }}{% endif %}
+                {% endif %}
+              </td>
+            </tr>
+            {% endif %}
+            {% if info.per %}
+            <tr>
+              <td>P/E (PER)</td>
+              <td class="text-end">{{ "%.2f"|format(info.per) }}</td>
+            </tr>
+            {% endif %}
+            {% if info.pbr is defined and info.pbr %}
+            <tr>
+              <td>P/B (PBR)</td>
+              <td class="text-end">{{ "%.2f"|format(info.pbr) }}</td>
+            </tr>
+            {% endif %}
+            {% if info.eps %}
+            <tr>
+              <td>EPS</td>
+              <td class="text-end">{{ "%.2f"|format(info.eps) }}</td>
+            </tr>
+            {% endif %}
+            {% if info.div_yield %}
+            <tr>
+              <td>배당수익률</td>
+              <td class="text-end">{{ "%.2f"|format(info.div_yield) }}%</td>
+            </tr>
+            {% endif %}
+            {% if info.beta %}
+            <tr>
+              <td>Beta</td>
+              <td class="text-end">{{ "%.2f"|format(info.beta) }}</td>
+            </tr>
+            {% endif %}
+            {% if info.sector %}
+            <tr>
+              <td>섹터</td>
+              <td class="text-end small">{{ info.sector }}</td>
+            </tr>
+            {% endif %}
+            {% if info.industry %}
+            <tr>
+              <td>산업</td>
+              <td class="text-end small">{{ info.industry }}</td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Navigation back -->
+    <div class="d-grid gap-2">
+      {% if market == 'korean' %}
+      <a href="{{ url_for('korean.index') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="fa-solid fa-arrow-left me-1"></i>국내시장으로
+      </a>
+      {% else %}
+      <a href="{{ url_for('us.index') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="fa-solid fa-arrow-left me-1"></i>미국시장으로
+      </a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
