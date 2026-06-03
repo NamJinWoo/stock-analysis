@@ -1,0 +1,10 @@
+{# Shared market page macro — included by korean.html and us.html #}
+{% macro change_badge(pct) %}
+  {% if pct > 0 %}
+    <span class="badge bg-danger">▲ {{ pct }}%</span>
+  {% elif pct < 0 %}
+    <span class="badge bg-primary">▼ {{ pct | abs }}%</span>
+  {% else %}
+    <span class="badge bg-secondary">0.00%</span>
+  {% endif %}
+{% endmacro %}

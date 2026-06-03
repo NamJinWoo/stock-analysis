@@ -1,0 +1,8 @@
+flask==3.0.3
+flask-caching==2.3.0
+yfinance==0.2.43
+pykrx==1.0.47
+pandas==2.2.2
+requests==2.32.3
+python-dotenv==1.0.1
+apscheduler==3.10.4
