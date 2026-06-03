@@ -4,7 +4,8 @@
 
 {% block scripts %}
 <script>
-  window.REFRESH_API_URL = "{{ url_for('us.api_data') }}";
+  window.REFRESH_API_URL  = "{{ url_for('us.api_data') }}";
+  window.US_NEWS_API_URL  = "{{ url_for('us.api_news') }}";
   window.MARKET_TYPE = "us";
 </script>
 {% endblock %}
@@ -268,6 +269,75 @@
     {% else %}
     <div class="col-12"><p class="text-muted">Calculating recommendations…</p></div>
     {% endfor %}
+  </div>
+</section>
+
+<!-- ============================================================
+     Reuters 뉴스 — M7 · 반도체 · AI · 양자컴퓨팅
+     ============================================================ -->
+<section class="mb-5">
+  <h5 class="fw-semibold mb-3 text-secondary">
+    <i class="fa-solid fa-newspaper me-2 text-danger"></i>Reuters 최신 기사
+    <span class="badge bg-danger ms-2 align-middle" style="font-size:.65rem;">Reuters</span>
+  </h5>
+
+  <!-- Category tabs -->
+  <ul class="nav nav-tabs mb-3" id="newsTab" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#news-m7"
+              data-category="M7 빅테크" type="button">
+        <i class="fa-solid fa-7 me-1"></i>M7 빅테크
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#news-semi"
+              data-category="반도체" type="button">
+        <i class="fa-solid fa-microchip me-1"></i>반도체
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#news-ai"
+              data-category="AI·데이터" type="button">
+        <i class="fa-solid fa-robot me-1"></i>AI·데이터
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#news-quantum"
+              data-category="양자컴퓨팅" type="button">
+        <i class="fa-solid fa-atom me-1"></i>양자컴퓨팅
+      </button>
+    </li>
+  </ul>
+
+  <div class="tab-content" id="newsTabContent">
+    <div class="tab-pane fade show active" id="news-m7">
+      <div class="row g-3" id="news-body-M7 빅테크">
+        <div class="col-12 text-center text-muted py-3">
+          <div class="spinner-border spinner-border-sm me-1" role="status"></div>로딩 중…
+        </div>
+      </div>
+    </div>
+    <div class="tab-pane fade" id="news-semi">
+      <div class="row g-3" id="news-body-반도체">
+        <div class="col-12 text-center text-muted py-3">
+          <div class="spinner-border spinner-border-sm me-1" role="status"></div>로딩 중…
+        </div>
+      </div>
+    </div>
+    <div class="tab-pane fade" id="news-ai">
+      <div class="row g-3" id="news-body-AI·데이터">
+        <div class="col-12 text-center text-muted py-3">
+          <div class="spinner-border spinner-border-sm me-1" role="status"></div>로딩 중…
+        </div>
+      </div>
+    </div>
+    <div class="tab-pane fade" id="news-quantum">
+      <div class="row g-3" id="news-body-양자컴퓨팅">
+        <div class="col-12 text-center text-muted py-3">
+          <div class="spinner-border spinner-border-sm me-1" role="status"></div>로딩 중…
+        </div>
+      </div>
+    </div>
   </div>
 </section>
 {% endblock %}

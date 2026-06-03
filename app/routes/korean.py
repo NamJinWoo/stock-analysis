@@ -59,6 +59,15 @@ def api_recommendations():
     return jsonify({"recommendations": recs})
 
 
+@korean_bp.route("/api/news")
+@cache.cached(timeout=900)
+def api_news():
+    """국내시장 뉴스 — 삼성전자·SK하이닉스 Reuters 기사."""
+    from app.services import news_service
+    data = news_service.get_korean_market_news()
+    return jsonify(data)
+
+
 @korean_bp.route("/api/data")
 @cache.cached(timeout=60, query_string=True)
 def api_data():

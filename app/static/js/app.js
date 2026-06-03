@@ -645,7 +645,123 @@ function checkMarketStatus() {
 }
 
 /* ================================================================
-   7. DOMContentLoaded BOOTSTRAP
+   7. NEWS RENDERING
+   ================================================================ */
+
+/**
+ * Render a list of news articles into a container element.
+ * @param {Array}  articles
+ * @param {string} containerId
+ * @param {string} layout  "list" | "grid"
+ */
+function renderNewsArticles(articles, containerId, layout = 'list') {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  if (!articles || articles.length === 0) {
+    container.innerHTML = '<p class="text-muted small py-2 px-2">관련 기사가 없습니다.</p>';
+    return;
+  }
+
+  const isDark = document.body.getAttribute('data-theme') === 'dark';
+  const borderColor = isDark ? '#30363d' : '#dee2e6';
+
+  if (layout === 'grid') {
+    // Grid layout: 3 columns
+    container.innerHTML = articles.map(a => `
+      <div class="col-md-6 col-lg-4">
+        <div class="card border-0 shadow-sm h-100 news-card">
+          <div class="card-body p-3">
+            <div class="d-flex align-items-start gap-2 mb-2">
+              <span class="badge bg-danger flex-shrink-0">Reuters</span>
+              <span class="text-muted" style="font-size:.72rem;">${a.published || ''}</span>
+            </div>
+            <a href="${escHtml(a.link)}" target="_blank" rel="noopener noreferrer"
+               class="news-title-link fw-semibold" style="font-size:.88rem;line-height:1.4;">
+              ${escHtml(a.title)}
+            </a>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  } else {
+    // List layout (sidebar / company cards)
+    container.innerHTML = articles.map((a, i) => `
+      <div class="news-item px-2 py-2${i < articles.length - 1 ? ' border-bottom' : ''}">
+        <a href="${escHtml(a.link)}" target="_blank" rel="noopener noreferrer"
+           class="news-title-link d-block fw-semibold mb-1" style="font-size:.85rem;line-height:1.4;">
+          ${escHtml(a.title)}
+        </a>
+        <div class="d-flex align-items-center gap-2">
+          <span class="badge bg-danger" style="font-size:.65rem;">Reuters</span>
+          <span class="text-muted" style="font-size:.72rem;">
+            <i class="fa-regular fa-clock me-1"></i>${a.published || ''}
+          </span>
+        </div>
+      </div>
+    `).join('');
+  }
+}
+
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/** Load Korean market news (Samsung + SK Hynix) */
+async function loadKoreanMarketNews() {
+  if (!window.KR_NEWS_API_URL) return;
+  try {
+    const resp = await fetch(window.KR_NEWS_API_URL);
+    if (!resp.ok) return;
+    const data = await resp.json();
+    // data: { "005930": { ticker, name, articles: [...] }, "000660": { ... } }
+    Object.entries(data).forEach(([ticker, info]) => {
+      renderNewsArticles(info.articles || [], `news-${ticker}`, 'list');
+    });
+  } catch (e) {
+    console.warn('Korean news load failed:', e);
+  }
+}
+
+/** Load US market news (tab-based) */
+let _usNewsCache = null;
+async function loadUSMarketNews() {
+  if (!window.US_NEWS_API_URL) return;
+  try {
+    if (!_usNewsCache) {
+      const resp = await fetch(window.US_NEWS_API_URL);
+      if (!resp.ok) return;
+      _usNewsCache = await resp.json();
+    }
+    // data: { "M7 빅테크": [...], "반도체": [...], ... }
+    Object.entries(_usNewsCache).forEach(([category, articles]) => {
+      const containerId = `news-body-${category}`;
+      renderNewsArticles(articles || [], containerId, 'grid');
+    });
+  } catch (e) {
+    console.warn('US news load failed:', e);
+  }
+}
+
+/** Load stock detail news */
+async function loadStockDetailNews() {
+  if (!window.NEWS_API_URL) return;
+  try {
+    const resp = await fetch(window.NEWS_API_URL);
+    if (!resp.ok) return;
+    const data = await resp.json();
+    renderNewsArticles(data.articles || [], 'stock-news-container', 'list');
+  } catch (e) {
+    console.warn('Stock news load failed:', e);
+  }
+}
+
+/* ================================================================
+   8. DOMContentLoaded BOOTSTRAP
    ================================================================ */
 document.addEventListener('DOMContentLoaded', () => {
   // Dark mode icon
@@ -682,5 +798,27 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initial chart load (stock detail page)
   if (window.CHART_API_URL && window.DEFAULT_PERIOD) {
     loadChartData(window.DEFAULT_PERIOD);
+  }
+
+  // News: stock detail
+  if (window.NEWS_API_URL) {
+    loadStockDetailNews();
+  }
+
+  // News: Korean market page
+  if (window.KR_NEWS_API_URL) {
+    loadKoreanMarketNews();
+  }
+
+  // News: US market page (load on tab show — lazy)
+  if (window.US_NEWS_API_URL) {
+    // Load first tab immediately
+    loadUSMarketNews();
+    // Reload on tab switch (data is cached in _usNewsCache)
+    document.querySelectorAll('#newsTab .nav-link').forEach(tab => {
+      tab.addEventListener('shown.bs.tab', () => {
+        loadUSMarketNews();
+      });
+    });
   }
 });

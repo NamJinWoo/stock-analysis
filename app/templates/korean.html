@@ -5,6 +5,7 @@
 {% block scripts %}
 <script>
   window.REFRESH_API_URL = "{{ url_for('korean.api_data', market=market) }}";
+  window.KR_NEWS_API_URL = "{{ url_for('korean.api_news') }}";
   window.MARKET_TYPE = "korean";
 </script>
 {% endblock %}
@@ -243,6 +244,47 @@
     {% else %}
     <div class="col-12"><p class="text-muted">추천 종목을 계산 중입니다…</p></div>
     {% endfor %}
+  </div>
+</section>
+
+<!-- ============================================================
+     Reuters 뉴스 — 삼성전자 · SK하이닉스
+     ============================================================ -->
+<section class="mb-5">
+  <h5 class="fw-semibold mb-3 text-secondary">
+    <i class="fa-solid fa-newspaper me-2 text-danger"></i>Reuters 최신 기사
+    <span class="badge bg-danger ms-2 align-middle" style="font-size:.65rem;">Reuters</span>
+  </h5>
+
+  <div class="row g-4" id="kr-news-row">
+    <!-- 삼성전자 -->
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header fw-semibold">
+          <img src="https://logo.clearbit.com/samsung.com" width="18" height="18" class="me-2 rounded" alt="" onerror="this.style.display='none'">
+          삼성전자 (005930)
+        </div>
+        <div class="card-body p-2" id="news-005930">
+          <div class="text-center py-3 text-muted small">
+            <div class="spinner-border spinner-border-sm me-1" role="status"></div>뉴스 로딩 중…
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- SK하이닉스 -->
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header fw-semibold">
+          <img src="https://logo.clearbit.com/skhynix.com" width="18" height="18" class="me-2 rounded" alt="" onerror="this.style.display='none'">
+          SK하이닉스 (000660)
+        </div>
+        <div class="card-body p-2" id="news-000660">
+          <div class="text-center py-3 text-muted small">
+            <div class="spinner-border spinner-border-sm me-1" role="status"></div>뉴스 로딩 중…
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
 {% endblock %}

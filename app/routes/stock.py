@@ -42,6 +42,15 @@ def us_detail(ticker):
     )
 
 
+@stock_bp.route("/api/news/<market>/<ticker>")
+@cache.cached(timeout=900, query_string=True)
+def news_api(market, ticker):
+    """종목 상세 페이지용 Reuters 뉴스 API."""
+    from app.services import news_service
+    articles = news_service.get_stock_news(ticker.upper())
+    return jsonify({"ticker": ticker.upper(), "articles": articles})
+
+
 @stock_bp.route("/api/chart/<market>/<ticker>")
 @cache.cached(timeout=120, query_string=True)
 def chart_api(market, ticker):
