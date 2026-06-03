@@ -42,130 +42,8 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /* ================================================================
-   2. AUTO-REFRESH WITH COUNTDOWN
+   2. (auto-refresh 제거 — 장마감 기준 정적 데이터)
    ================================================================ */
-let refreshCountdown = 60;
-let refreshTimer = null;
-let isRefreshing = false;
-
-function startAutoRefresh() {
-  if (!window.REFRESH_API_URL) return;
-  refreshTimer = setInterval(() => {
-    refreshCountdown--;
-    const el = document.getElementById('refresh-countdown');
-    if (el) el.textContent = refreshCountdown;
-    if (refreshCountdown <= 0) {
-      refreshCountdown = 60;
-      doRefresh();
-    }
-  }, 1000);
-}
-
-async function doRefresh() {
-  if (isRefreshing || !window.REFRESH_API_URL) return;
-  isRefreshing = true;
-  const spinner = document.getElementById('refresh-spinner');
-  if (spinner) spinner.classList.remove('d-none');
-
-  try {
-    const resp = await fetch(window.REFRESH_API_URL);
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    const data = await resp.json();
-    updateDOMWithRefreshData(data);
-
-    const updEl = document.getElementById('last-updated');
-    if (updEl) {
-      updEl.textContent = new Date().toLocaleTimeString('ko-KR');
-    }
-  } catch (e) {
-    console.warn('Auto-refresh failed:', e);
-  } finally {
-    isRefreshing = false;
-    if (spinner) spinner.classList.add('d-none');
-  }
-}
-
-function updateDOMWithRefreshData(data) {
-  // Update index cards
-  if (data.indices && Array.isArray(data.indices)) {
-    data.indices.forEach(idx => {
-      const el = document.getElementById('idx-close-' + idx.name.replace(/[^a-z0-9]/gi, '_'));
-      if (el) el.textContent = Number(idx.close).toLocaleString();
-      const pctEl = document.getElementById('idx-pct-' + idx.name.replace(/[^a-z0-9]/gi, '_'));
-      if (pctEl) {
-        const pct = idx.change_pct;
-        pctEl.className = 'badge ' + (pct > 0 ? 'bg-danger' : pct < 0 ? 'bg-primary' : 'bg-secondary');
-        const arrow = pct > 0 ? '▲' : pct < 0 ? '▼' : '';
-        pctEl.textContent = arrow + ' ' + Math.abs(pct).toFixed(2) + '%';
-      }
-    });
-  }
-
-  // Update gainers/losers tbody
-  if (data.gainers) updateMoversTable('gainers-tbody', data.gainers, window.MARKET_TYPE);
-  if (data.losers)  updateMoversTable('losers-tbody',  data.losers,  window.MARKET_TYPE);
-
-  // Update volume leaders
-  if (data.vol_leaders) updateMoversTable('vol-tbody', data.vol_leaders, window.MARKET_TYPE);
-
-  // Update breadth counters
-  if (data.breadth) {
-    const { advancers, decliners, unchanged } = data.breadth;
-    const aEl = document.getElementById('breadth-adv');
-    const dEl = document.getElementById('breadth-dec');
-    const uEl = document.getElementById('breadth-unc');
-    if (aEl) aEl.textContent = advancers;
-    if (dEl) dEl.textContent = decliners;
-    if (uEl) uEl.textContent = unchanged;
-
-    // Update breadth donut chart
-    if (window._breadthChart) {
-      window._breadthChart.data.datasets[0].data = [advancers, decliners, unchanged];
-      window._breadthChart.update();
-    }
-  }
-
-  // Fear & Greed
-  if (data.fear_greed) {
-    const fgLabel = document.getElementById('fg-label');
-    const fgVix   = document.getElementById('fg-vix');
-    if (fgLabel) fgLabel.textContent = data.fear_greed.label;
-    if (fgVix)   fgVix.textContent   = data.fear_greed.value ? 'VIX: ' + data.fear_greed.value : '';
-  }
-}
-
-function updateMoversTable(tbodyId, rows, marketType) {
-  const tbody = document.getElementById(tbodyId);
-  if (!tbody) return;
-  tbody.innerHTML = rows.map(s => {
-    const pct = s.change_pct;
-    const badge = pct > 0
-      ? `<span class="badge bg-danger">▲ ${pct}%</span>`
-      : pct < 0
-        ? `<span class="badge bg-primary">▼ ${Math.abs(pct)}%</span>`
-        : `<span class="badge bg-secondary">0.00%</span>`;
-    const vol = Number(s.volume).toLocaleString();
-    const url = marketType === 'korean'
-      ? `/stock/korean/${s.ticker}`
-      : `/stock/us/${s.ticker}`;
-    if (marketType === 'korean') {
-      const price = Number(s.close).toLocaleString('ko-KR', {maximumFractionDigits: 0}) + '원';
-      return `<tr class="clickable-row" onclick="location.href='${url}'">
-        <td><span class="fw-semibold">${s.name}</span><br><small class="text-muted">${s.ticker}</small></td>
-        <td>${price}</td>
-        <td>${badge}</td>
-        <td class="text-muted small">${vol}</td>
-      </tr>`;
-    } else {
-      return `<tr class="clickable-row" onclick="location.href='${url}'">
-        <td><span class="fw-semibold">${s.ticker}</span></td>
-        <td>$${Number(s.close).toFixed(2)}</td>
-        <td>${badge}</td>
-        <td class="text-muted small">${vol}</td>
-      </tr>`;
-    }
-  }).join('') || '<tr><td colspan="4" class="text-center text-muted py-3">데이터 없음</td></tr>';
-}
 
 /* ================================================================
    3. SPARKLINES
@@ -779,9 +657,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const unc = parseInt(breadthCanvas.dataset.unc || 0, 10);
     initBreadthChart(adv, dec, unc);
   }
-
-  // Auto-refresh
-  startAutoRefresh();
 
   // Market clocks
   startMarketClocks();

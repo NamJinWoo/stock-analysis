@@ -33,6 +33,18 @@ SP500_TICKERS = [
 ]
 
 
+def get_last_trading_day() -> str:
+    """마지막 거래일 날짜 문자열 반환 (YYYY-MM-DD)."""
+    try:
+        t = yf.Ticker("^GSPC")
+        hist = t.history(period="5d")
+        if not hist.empty:
+            return hist.index[-1].strftime("%Y-%m-%d")
+    except Exception:
+        pass
+    return (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+
+
 def get_market_indices():
     result = []
     for name, ticker in INDICES.items():

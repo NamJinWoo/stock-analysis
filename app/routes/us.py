@@ -1,5 +1,4 @@
 from flask import Blueprint, render_template, jsonify
-from datetime import datetime
 from app import cache
 from app.services import us_service
 
@@ -14,7 +13,7 @@ SPARKLINE_INDICES = {
 
 
 @us_bp.route("/")
-@cache.cached(timeout=300)
+@cache.cached(timeout=14400)   # 4시간 — 장마감 기준
 def index():
     indices     = us_service.get_market_indices()
     gainers, losers = us_service.get_top_movers()
@@ -22,13 +21,13 @@ def index():
     sectors     = us_service.get_sector_performance()
     fear_greed  = us_service.get_fear_greed()
     vol_leaders = us_service.get_volume_leaders()
+    breadth     = us_service.get_market_breadth()
+    base_date   = us_service.get_last_trading_day()
 
     sparklines = {}
     for name, ticker in SPARKLINE_INDICES.items():
         sparklines[name] = us_service.get_sparkline_data(ticker)
 
-    breadth = us_service.get_market_breadth()
-    now = datetime.now().strftime("%Y-%m-%d %H:%M ET")
     return render_template(
         "us.html",
         indices=indices,
@@ -40,46 +39,12 @@ def index():
         vol_leaders=vol_leaders,
         sparklines=sparklines,
         breadth=breadth,
-        now=now,
+        base_date=base_date,
     )
 
 
-@us_bp.route("/api/movers")
-@cache.cached(timeout=300)
-def api_movers():
-    gainers, losers = us_service.get_top_movers()
-    return jsonify({"gainers": gainers, "losers": losers})
-
-
-@us_bp.route("/api/recommendations")
-@cache.cached(timeout=300)
-def api_recommendations():
-    recs = us_service.get_recommendations()
-    return jsonify({"recommendations": recs})
-
-
 @us_bp.route("/api/news")
-@cache.cached(timeout=900)
+@cache.cached(timeout=3600)   # 뉴스는 1시간
 def api_news():
-    """미국시장 뉴스 — M7·반도체·AI·양자 Reuters 기사."""
     from app.services import news_service
-    data = news_service.get_us_market_news()
-    return jsonify(data)
-
-
-@us_bp.route("/api/data")
-@cache.cached(timeout=60)
-def api_data():
-    """Fast refresh endpoint: indices + breadth + movers + fear_greed."""
-    indices     = us_service.get_market_indices()
-    gainers, losers = us_service.get_top_movers()
-    fear_greed  = us_service.get_fear_greed()
-    vol_leaders = us_service.get_volume_leaders()
-    return jsonify({
-        "indices":     indices,
-        "gainers":     gainers,
-        "losers":      losers,
-        "fear_greed":  fear_greed,
-        "vol_leaders": vol_leaders,
-        "updated_at":  datetime.now().strftime("%H:%M:%S"),
-    })
+    return jsonify(news_service.get_us_market_news())

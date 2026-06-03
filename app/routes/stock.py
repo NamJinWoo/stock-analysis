@@ -1,11 +1,4 @@
-"""
-stock.py — Stock detail pages and chart data API.
-Routes:
-  /stock/korean/<ticker>  → Korean stock detail
-  /stock/us/<ticker>      → US stock detail
-  /stock/api/chart/<market>/<ticker>  → JSON chart data (AJAX)
-"""
-from flask import Blueprint, render_template, jsonify, request, abort
+from flask import Blueprint, render_template, jsonify, request
 from app import cache
 from app.services import detail_service
 
@@ -13,9 +6,10 @@ stock_bp = Blueprint("stock", __name__, url_prefix="/stock")
 
 
 @stock_bp.route("/korean/<ticker>")
+@cache.cached(timeout=14400, query_string=True)   # 4시간
 def korean_detail(ticker):
     ticker = ticker.upper()
-    info = detail_service.get_korean_stock_info(ticker)
+    info       = detail_service.get_korean_stock_info(ticker)
     chart_data = detail_service.get_korean_chart_data(ticker, period="3mo")
     return render_template(
         "stock_detail.html",
@@ -28,9 +22,10 @@ def korean_detail(ticker):
 
 
 @stock_bp.route("/us/<ticker>")
+@cache.cached(timeout=14400, query_string=True)   # 4시간
 def us_detail(ticker):
     ticker = ticker.upper()
-    info = detail_service.get_us_stock_info(ticker)
+    info       = detail_service.get_us_stock_info(ticker)
     chart_data = detail_service.get_us_chart_data(ticker, period="3mo")
     return render_template(
         "stock_detail.html",
@@ -43,21 +38,19 @@ def us_detail(ticker):
 
 
 @stock_bp.route("/api/news/<market>/<ticker>")
-@cache.cached(timeout=900, query_string=True)
+@cache.cached(timeout=3600, query_string=True)   # 1시간
 def news_api(market, ticker):
-    """종목 상세 페이지용 Reuters 뉴스 API."""
     from app.services import news_service
     articles = news_service.get_stock_news(ticker.upper())
     return jsonify({"ticker": ticker.upper(), "articles": articles})
 
 
 @stock_bp.route("/api/chart/<market>/<ticker>")
-@cache.cached(timeout=120, query_string=True)
+@cache.cached(timeout=14400, query_string=True)   # 4시간 — EOD 차트
 def chart_api(market, ticker):
     ticker = ticker.upper()
     period = request.args.get("period", "3mo")
-    valid_periods = {"1wk", "1mo", "3mo", "6mo", "1y"}
-    if period not in valid_periods:
+    if period not in {"1wk", "1mo", "3mo", "6mo", "1y"}:
         period = "3mo"
 
     if market == "korean":
@@ -69,5 +62,4 @@ def chart_api(market, ticker):
 
     if data is None:
         return jsonify({"error": "no data"}), 404
-
     return jsonify(data)

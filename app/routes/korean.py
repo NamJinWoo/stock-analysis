@@ -1,5 +1,4 @@
 from flask import Blueprint, render_template, jsonify, request
-from datetime import datetime
 from app import cache
 from app.services import korean_service
 
@@ -13,9 +12,11 @@ SPARKLINE_INDICES = {
 
 
 @korean_bp.route("/")
-@cache.cached(timeout=300)
+@cache.cached(timeout=14400, query_string=True)   # 4시간 — 장마감 기준
 def index():
     market = request.args.get("market", "KOSPI")
+
+    last_day    = korean_service.get_last_trading_day()
     indices     = korean_service.get_market_indices()
     gainers, losers = korean_service.get_top_movers(market)
     recommendations = korean_service.get_recommendations(market)
@@ -27,7 +28,9 @@ def index():
     for name, ticker in SPARKLINE_INDICES.items():
         sparklines[name] = korean_service.get_sparkline_data(ticker)
 
-    now = datetime.now().strftime("%Y-%m-%d %H:%M KST")
+    # YYYY-MM-DD 형식으로 변환
+    base_date = f"{last_day[:4]}-{last_day[4:6]}-{last_day[6:]}"
+
     return render_template(
         "korean.html",
         indices=indices,
@@ -39,49 +42,12 @@ def index():
         vol_leaders=vol_leaders,
         sparklines=sparklines,
         market=market,
-        now=now,
+        base_date=base_date,
     )
 
 
-@korean_bp.route("/api/movers")
-@cache.cached(timeout=300, query_string=True)
-def api_movers():
-    market = request.args.get("market", "KOSPI")
-    gainers, losers = korean_service.get_top_movers(market)
-    return jsonify({"gainers": gainers, "losers": losers})
-
-
-@korean_bp.route("/api/recommendations")
-@cache.cached(timeout=300, query_string=True)
-def api_recommendations():
-    market = request.args.get("market", "KOSPI")
-    recs = korean_service.get_recommendations(market)
-    return jsonify({"recommendations": recs})
-
-
 @korean_bp.route("/api/news")
-@cache.cached(timeout=900)
+@cache.cached(timeout=3600)   # 뉴스는 1시간
 def api_news():
-    """국내시장 뉴스 — 삼성전자·SK하이닉스 Reuters 기사."""
     from app.services import news_service
-    data = news_service.get_korean_market_news()
-    return jsonify(data)
-
-
-@korean_bp.route("/api/data")
-@cache.cached(timeout=60, query_string=True)
-def api_data():
-    """Fast refresh endpoint: indices + breadth + movers."""
-    market = request.args.get("market", "KOSPI")
-    indices = korean_service.get_market_indices()
-    gainers, losers = korean_service.get_top_movers(market)
-    breadth = korean_service.get_market_breadth(market)
-    vol_leaders = korean_service.get_volume_leaders(market)
-    return jsonify({
-        "indices":     indices,
-        "gainers":     gainers,
-        "losers":      losers,
-        "breadth":     breadth,
-        "vol_leaders": vol_leaders,
-        "updated_at":  datetime.now().strftime("%H:%M:%S"),
-    })
+    return jsonify(news_service.get_korean_market_news())
